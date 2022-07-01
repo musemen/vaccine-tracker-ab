@@ -1,0 +1,41 @@
+
+
+
+# Use Dockerized infrastructure
+sudo: false
+language: python
+
+cache:
+  directories:
+  - "$HOME/google-cloud-sdk/"
+
+before_install:
+# Install Google App Engine Python SDK
+- if [ ! -d "$HOME/google-cloud-sdk" ]; then
+      export CLOUD_SDK_REPO="cloud-sdk-$(lsb_release -c -s)";
+      echo "deb http://packages.cloud.google.com/apt $CLOUD_SDK_REPO main" | sudo tee -a /etc/apt/sources.list.d/google-cloud-sdk.list;
+      curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add - ;
+      sudo apt-get update && sudo apt-get install google-cloud-sdk;
+  fi
+  - sudo ./google-cloud-sdk/install.sh -y
+
+# If the SDK is not already cached, download it and unpack it
+- if [ ! -d ${HOME}/google-cloud-sdk ]; then
+     curl https://sdk.cloud.google.com | bash;
+  fi
+- gcloud auth activate-service-account --key-file twil-app-1a654859afb6.json
+# [END auth]
+install:
+# Set the correct project to deploy to
+- gcloud config set project twil-app
+# Install the Python dependencies
+- pip install -r requirements.txt -t lib/
+script:
+# Run the unit tests
+- python test_main.py
+# [START deploy]
+# Deploy the app
+- gcloud -q app deploy app.yaml --promote
+# Run and end to end test
+- python test_main.py
+# [END deploy]
